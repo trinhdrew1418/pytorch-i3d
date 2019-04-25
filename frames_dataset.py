@@ -29,7 +29,7 @@ def video_to_tensor(pic):
 def load_rgb_frames(video_dir):
   frames = []
   for im_path in os.listdir(video_dir):
-    img = cv2.imread(im_path))[:, :, [2, 1, 0]]
+    img = cv2.imread(os.path.join(video_dir, im_path))[:, :, [2, 1, 0]]
     w, h, c = img.shape
 
     if w < 226 or h < 226:
@@ -68,12 +68,12 @@ def get_video_directories(root):
             continue
         video_directories.append(os.path.join(root, subdir))
 
-    return dataset
+    return video_directories
 
 
 class Frames(data_utl.Dataset):
     def __init__(self, root, mode, transforms=None, save_dir=''):
-        self.video_directories = make_dataset(root)
+        self.video_directories = get_video_directories(root)
         self.transforms = transforms
         self.mode = mode
         self.root = root
@@ -90,13 +90,13 @@ class Frames(data_utl.Dataset):
         vid_dir = self.video_directories[index]
 
         if self.mode == 'rgb':
-            imgs = load_rgb_frames(video_dir)
+            imgs = load_rgb_frames(vid_dir)
         else:
             imgs = load_flow_frames(self.root, vid, 1, nf)
 
         imgs = self.transforms(imgs)
 
-        return video_to_tensor(imgs), vid
+        return video_to_tensor(imgs), vid_dir
 
     def __len__(self):
         return len(self.video_directories)
