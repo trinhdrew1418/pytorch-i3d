@@ -11,12 +11,13 @@ import os
 import os.path
 
 import cv2
+import csv
 
 def video_to_tensor(pic):
     """Convert a ``numpy.ndarray`` to tensor.
     Converts a numpy.ndarray (T x H x W x C)
     to a torch.FloatTensor of shape (C x T x H x W)
-    
+
     Args:
          pic (numpy.ndarray): Video to be converted to tensor.
     Returns:
@@ -28,7 +29,7 @@ def video_to_tensor(pic):
 def load_rgb_frames(image_dir, vid, start, num):
   frames = []
   for i in range(start, start+num):
-    img = cv2.imread(os.path.join(image_dir, vid, vid+'-'+str(i).zfill(6)+'.jpg'))[:, :, [2, 1, 0]]
+    img = cv2.imread(os.path.join(image_dir, vid, str(i).zfill(4)+'.jpg'))[:, :, [2, 1, 0]]
     w,h,c = img.shape
     if w < 226 or h < 226:
         d = 226.-min(w,h)
@@ -43,14 +44,14 @@ def load_flow_frames(image_dir, vid, start, num):
   for i in range(start, start+num):
     imgx = cv2.imread(os.path.join(image_dir, vid, vid+'-'+str(i).zfill(6)+'x.jpg'), cv2.IMREAD_GRAYSCALE)
     imgy = cv2.imread(os.path.join(image_dir, vid, vid+'-'+str(i).zfill(6)+'y.jpg'), cv2.IMREAD_GRAYSCALE)
-    
+
     w,h = imgx.shape
     if w < 224 or h < 224:
         d = 224.-min(w,h)
         sc = 1+d/min(w,h)
         imgx = cv2.resize(imgx,dsize=(0,0),fx=sc,fy=sc)
         imgy = cv2.resize(imgy,dsize=(0,0),fx=sc,fy=sc)
-        
+
     imgx = (imgx/255.)*2 - 1
     imgy = (imgy/255.)*2 - 1
     img = np.asarray([imgx, imgy]).transpose([1,2,0])
@@ -61,36 +62,19 @@ def load_flow_frames(image_dir, vid, start, num):
 def make_dataset(split_file, split, root, mode, num_classes=157):
     dataset = []
     with open(split_file, 'r') as f:
-        data = json.load(f)
+        reader = csv.reader(f)
+        for i in list(reader):
+            if not i:
+                continue
+            separated = i[0].split(' ')
+            dataset.append((separated[0], int(separated[1])))
 
-    i = 0
-    for vid in data.keys():
-        if data[vid]['subset'] != split:
-            continue
-
-        if not os.path.exists(os.path.join(root, vid)):
-            continue
-        num_frames = len(os.listdir(os.path.join(root, vid)))
-        if mode == 'flow':
-            num_frames = num_frames//2
-            
-        label = np.zeros((num_classes,num_frames), np.float32)
-
-        fps = num_frames/data[vid]['duration']
-        for ann in data[vid]['actions']:
-            for fr in range(0,num_frames,1):
-                if fr/fps > ann[1] and fr/fps < ann[2]:
-                    label[ann[0], fr] = 1 # binary classification
-        dataset.append((vid, label, data[vid]['duration'], num_frames))
-        i += 1
-    
     return dataset
 
 
 class Charades(data_utl.Dataset):
-
     def __init__(self, split_file, split, root, mode, transforms=None, save_dir='', num=0):
-        
+
         self.data = make_dataset(split_file, split, root, mode)
         self.split_file = split_file
         self.transforms = transforms
@@ -106,9 +90,7 @@ class Charades(data_utl.Dataset):
         Returns:
             tuple: (image, target) where target is class_index of the target class.
         """
-        vid, label, dur, nf = self.data[index]
-        if os.path.exists(os.path.join(self.save_dir, vid+'.npy')):
-            return 0, 0, vid
+        vid, nf = self.data[index]
 
         if self.mode == 'rgb':
             imgs = load_rgb_frames(self.root, vid, 1, nf)
@@ -117,7 +99,7 @@ class Charades(data_utl.Dataset):
 
         imgs = self.transforms(imgs)
 
-        return video_to_tensor(imgs), torch.from_numpy(label), vid
+        return video_to_tensor(imgs), vid
 
     def __len__(self):
         return len(self.data)
