@@ -31,7 +31,7 @@ from pytorch_i3d import InceptionI3d
 from frames_dataset import Frames
 
 
-def run(max_steps=64e3, mode='rgb', root='../crossmodal_retrieval/data/YLI-MED-25rgb/', split='YLI_MED_folder_names.csv', batch_size=1, load_model='models/rgb_imagenet.pt', save_dir='./saved_feats'):
+def run(max_steps=64e3, mode='rgb', root='../crossmodal_retrieval/data/YLI-MED-25rgb/', batch_size=1, load_model='models/rgb_imagenet.pt', save_dir='./saved_feats'):
     # setup dataset
     test_transforms = transforms.Compose([videotransforms.CenterCrop(224)])
     dataset = Frames(root, mode, test_transforms, save_dir=save_dir)
