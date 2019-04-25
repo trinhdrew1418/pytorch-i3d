@@ -83,7 +83,7 @@ def run(max_steps=64e3, mode='rgb', root='../crossmodal_retrieval/data/YLI-MED-2
             with torch.no_grad():
                 inputs = Variable(inputs.cuda())
             features = i3d.extract_features(inputs)
-            print(save_dir, name[0])
+            print(save_dir, name)
             np.save(os.path.join(save_dir, name), features.squeeze(0).permute(1,2,3,0).data.cpu().numpy())
 
 
